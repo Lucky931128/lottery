@@ -16,10 +16,22 @@ textarea {
   font-size:16px;
 }
 button {
-  font-size:20px;
-  padding:10px 30px;
-  margin:10px;
+  font-size:24px;
+  padding:14px 48px;
+  margin:20px;
+  border:none;
+  border-radius:40px;
   cursor:pointer;
+  color:#fff;
+  background: linear-gradient(135deg, #00c6ff, #0072ff);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  transition: all .2s ease;
+}
+button:hover {
+  transform: scale(1.05);
+}
+button.stop {
+  background: linear-gradient(135deg, #ff512f, #dd2476);
 }
 .result {
   font-size:48px;
@@ -39,7 +51,7 @@ th, td {
 </head>
 
 <body>
-<h1>🎤 直播部门抽签系统</h1>
+<h1>🎤2G-AI大讲堂-抽签系统</h1>
 
 <p>导入部门池（每行一个部门）</p>
 <textarea id="pool"></textarea><br>
