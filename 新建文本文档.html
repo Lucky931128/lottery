@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>部门抽签系统</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background:#111;
+  color:#fff;
+  text-align:center;
+}
+textarea {
+  width:60%;
+  height:100px;
+  font-size:16px;
+}
+button {
+  font-size:20px;
+  padding:10px 30px;
+  margin:10px;
+  cursor:pointer;
+}
+.result {
+  font-size:48px;
+  margin:30px 0;
+  color:#00ffcc;
+}
+table {
+  margin:20px auto;
+  border-collapse:collapse;
+  width:80%;
+}
+th, td {
+  border:1px solid #666;
+  padding:10px;
+}
+</style>
+</head>
+
+<body>
+<h1>🎤 直播部门抽签系统</h1>
+
+<p>导入部门池（每行一个部门）</p>
+<textarea id="pool"></textarea><br>
+
+<button onclick="startOrStop()">开始 / 停止</button>
+
+<div class="result" id="display">等待抽签</div>
+
+<h2>📋 抽签记录</h2>
+<table>
+  <thead>
+    <tr>
+      <th>时间</th>
+      <th>部门</th>
+    </tr>
+  </thead>
+  <tbody id="log"></tbody>
+</table>
+
+<script>
+let departments = [];
+let rolling = false;
+let timer = null;
+let picked = [];
+
+function startOrStop() {
+  if (!rolling) {
+    departments = document.getElementById("pool").value
+      .split("\n")
+      .map(d => d.trim())
+      .filter(d => d && !picked.includes(d));
+
+    if (departments.length < 1) {
+      alert("没有可抽取的部门了！");
+      return;
+    }
+
+    rolling = true;
+    timer = setInterval(() => {
+      const rand = departments[Math.floor(Math.random() * departments.length)];
+      document.getElementById("display").innerText = rand;
+    }, 100);
+  } else {
+    clearInterval(timer);
+    rolling = false;
+    const result = document.getElementById("display").innerText;
+    picked.push(result);
+    logResult(result);
+  }
+}
+
+function logResult(dept) {
+  const time = new Date().toLocaleString();
+  const row = `<tr><td>${time}</td><td>${dept}</td></tr>`;
+  document.getElementById("log").innerHTML += row;
+}
+</script>
+</body>
+</html>
