@@ -56,8 +56,8 @@ th, td {
 <p>导入部门池（每行一个部门）</p>
 <textarea id="pool"></textarea><br>
 
-<button onclick="startOrStop()">开始 / 停止</button>
-
+<button id="actionBtn" onclick="startOrStop()">开始</button>
+  
 <div class="result" id="display">等待抽签</div>
 
 <h2>📋 抽签记录</h2>
@@ -78,6 +78,8 @@ let timer = null;
 let picked = [];
 
 function startOrStop() {
+  const btn = document.getElementById("actionBtn");
+
   if (!rolling) {
     departments = document.getElementById("pool").value
       .split("\n")
@@ -90,13 +92,20 @@ function startOrStop() {
     }
 
     rolling = true;
+    btn.innerText = "停止";
+    btn.classList.add("stop");
+
     timer = setInterval(() => {
       const rand = departments[Math.floor(Math.random() * departments.length)];
       document.getElementById("display").innerText = rand;
     }, 100);
+
   } else {
     clearInterval(timer);
     rolling = false;
+    btn.innerText = "开始";
+    btn.classList.remove("stop");
+
     const result = document.getElementById("display").innerText;
     picked.push(result);
     logResult(result);
