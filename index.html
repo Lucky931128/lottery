@@ -10,10 +10,12 @@ body {
   color:#fff;
   text-align:center;
 }
-textarea {
+textarea{
   width:60%;
-  height:100px;
-  font-size:16px;
+  min-height:100px;
+  resize:none;
+  display:block;
+  margin:0 auto;
 }
 button {
   font-size:24px;
@@ -145,6 +147,16 @@ function copyTable() {
   navigator.clipboard.writeText(text);
   alert("已复制，直接粘贴到 Excel ✅");
 }
+  
+const pool = document.getElementById("pool");
+  function autoResize(el){
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }
+  pool.addEventListener("input", ()=>autoResize(pool));
+  autoResize(pool);
+  
+</script>
 </script>
 </body>
 </html>
