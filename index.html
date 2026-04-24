@@ -69,7 +69,9 @@ NP_质量部
 NP_智能穿戴采购部
 NP_智能穿戴质量部</textarea>
 
-<button id="actionBtn" onclick="startOrStop()">开始</button>
+<div style="text-align:center;">
+  <button id="actionBtn" onclick="startOrStop()">开始</button>
+</div>
   
 <div class="result" id="display">等待抽签</div>
 
@@ -84,7 +86,7 @@ NP_智能穿戴质量部</textarea>
   <tbody id="log"></tbody>
 </table>
 
-<button id="copyBtn" onclick="copyTable()">📋 复制抽签记录（Excel）</button>
+<button id="copyBtn" style="display:none" onclick="copyTable()">📋 复制抽签记录</button>
 
 <script>
 let departments = [];
