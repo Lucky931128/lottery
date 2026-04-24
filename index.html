@@ -11,11 +11,21 @@ body {
   text-align:center;
 }
 textarea{
-  width:60%;
+  min-width:300px;
+  max-width:80%;
+  width:40ch;              /* 关键：按字符宽度 */
   min-height:100px;
+  font-size:16px;
   resize:none;
   display:block;
-  margin:0 auto;
+  margin:20px auto;
+
+  /* ✅ 背景融合页面 */
+  background: rgba(255,255,255,0.12);
+  backdrop-filter: blur(6px);
+  color:#fff;
+  border:1px solid rgba(255,255,255,0.25);
+  border-radius:16px;
 }
 button {
   font-size:24px;
@@ -55,7 +65,6 @@ th, td {
 <body>
 <h1>🎤2G-AI大讲堂-抽签系统</h1>
 
-<p>导入部门池（每行一个部门）</p>
 <textarea id="pool">NP_ID部
 NP_大终端采购部
 NP_结构部
@@ -155,7 +164,22 @@ const pool = document.getElementById("pool");
   }
   pool.addEventListener("input", ()=>autoResize(pool));
   autoResize(pool);
-  
+
+function autoResizeWidth(el){
+  const lines = el.value.split("\n");
+  const maxLen = Math.max(...lines.map(l => l.length));
+  el.style.width = Math.min(maxLen + 4, 80) + "ch";
+}
+
+pool.addEventListener("input", ()=>{
+  autoResize(pool);
+  autoResizeWidth(pool);
+});
+
+// 页面初始化
+autoResize(pool);
+autoResizeWidth(pool);
+
 </script>
 </script>
 </body>
