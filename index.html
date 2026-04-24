@@ -22,14 +22,14 @@ h1{
     0 0 48px rgba(0,114,255,0.6);
 }
 
-/* ✅ 重点修改区 */
+/* ✅ textarea 已隐藏滚动条 */
 textarea{
-  width:40ch;              /* ✅ 宽度 ×2（原 20ch） */
+  width:40ch;
   min-width:360px;
   max-width:70%;
 
-  height:60px;             /* ✅ 高度 ÷2（原 120px） */
-  overflow-y:auto;         /* ✅ 超出滚动 */
+  height:60px;
+  overflow-y:auto;
   resize:none;
 
   display:block;
@@ -44,6 +44,12 @@ textarea{
   color:#fff;
   border:1px solid rgba(255,255,255,0.25);
   border-radius:16px;
+
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* IE / Edge */
+}
+textarea::-webkit-scrollbar{
+  display: none;                /* Chrome / Safari */
 }
 
 button {
