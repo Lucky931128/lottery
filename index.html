@@ -15,19 +15,20 @@ h1{
   margin:30px 0 20px;
   letter-spacing:3px;
   color:#ffffff;
-
-  /* 发光描边 */
   text-shadow:
     0 0 6px  #00eaff,
     0 0 12px #00eaff,
     0 0 24px #0072ff,
     0 0 48px rgba(0,114,255,0.6);
 }
+
+/* ✅ 重点修改区 */
 textarea{
-  width:20ch;              /* ✅ 原来 40ch，缩小一半 */
-  min-width:200px;
-  max-width:50%;
-  height:120px;            /* ✅ 固定高度 */
+  width:40ch;              /* ✅ 宽度 ×2（原 20ch） */
+  min-width:360px;
+  max-width:70%;
+
+  height:60px;             /* ✅ 高度 ÷2（原 120px） */
   overflow-y:auto;         /* ✅ 超出滚动 */
   resize:none;
 
@@ -44,6 +45,7 @@ textarea{
   border:1px solid rgba(255,255,255,0.25);
   border-radius:16px;
 }
+
 button {
   font-size:24px;
   padding:14px 48px;
@@ -97,10 +99,10 @@ NP_质量部
 NP_智能穿戴采购部
 NP_智能穿戴质量部</textarea>
 
-<div style="text-align:center;">
+<div>
   <button id="actionBtn" onclick="startOrStop()">开始</button>
 </div>
-  
+
 <div class="result" id="display">等待抽签</div>
 
 <h2>📋 抽签记录</h2>
@@ -159,8 +161,8 @@ function startOrStop() {
 
 function logResult(dept) {
   const time = new Date().toLocaleString();
-  const row = `<tr><td>${time}</td><td>${dept}</td></tr>`;
-  document.getElementById("log").innerHTML += row;
+  document.getElementById("log").innerHTML +=
+    `<tr><td>${time}</td><td>${dept}</td></tr>`;
   document.getElementById("copyBtn").style.display = "inline-block";
 }
 
@@ -173,31 +175,6 @@ function copyTable() {
   navigator.clipboard.writeText(text);
   alert("已复制，直接粘贴到 Excel ✅");
 }
-  
-const pool = document.getElementById("pool");
-  function autoResize(el){
-    el.style.height = "auto";
-    el.style.height = el.scrollHeight + "px";
-  }
-  pool.addEventListener("input", ()=>autoResize(pool));
-  autoResize(pool);
-
-function autoResizeWidth(el){
-  const lines = el.value.split("\n");
-  const maxLen = Math.max(...lines.map(l => l.length));
-  el.style.width = Math.min(maxLen + 4, 80) + "ch";
-}
-
-pool.addEventListener("input", ()=>{
-  //autoResize(pool);
-  autoResizeWidth(pool);
-});
-
-// 页面初始化
-//autoResize(pool);
-autoResizeWidth(pool);
-
-</script>
 </script>
 </body>
 </html>
