@@ -54,7 +54,20 @@ th, td {
 <h1>🎤2G-AI大讲堂-抽签系统</h1>
 
 <p>导入部门池（每行一个部门）</p>
-<textarea id="pool"></textarea><br>
+<textarea id="pool">NP_ID部
+NP_大终端采购部
+NP_结构部
+NP_软件测试部
+NP_手机软件开发部
+NP_智能产品软件开发部
+NP_生活家电质量部
+NP_生态链采购部
+NP_项目管理部
+NP_新业务产品管理部
+NP_硬件部
+NP_质量部
+NP_智能穿戴采购部
+NP_智能穿戴质量部</textarea>
 
 <button id="actionBtn" onclick="startOrStop()">开始</button>
   
@@ -70,6 +83,8 @@ th, td {
   </thead>
   <tbody id="log"></tbody>
 </table>
+
+<button id="copyBtn" onclick="copyTable()">📋 复制抽签记录（Excel）</button>
 
 <script>
 let departments = [];
@@ -116,6 +131,17 @@ function logResult(dept) {
   const time = new Date().toLocaleString();
   const row = `<tr><td>${time}</td><td>${dept}</td></tr>`;
   document.getElementById("log").innerHTML += row;
+  document.getElementById("copyBtn").style.display = "inline-block";
+}
+
+function copyTable() {
+  let text = "时间\t部门\n";
+  document.querySelectorAll("#log tr").forEach(tr => {
+    const tds = tr.querySelectorAll("td");
+    text += tds[0].innerText + "\t" + tds[1].innerText + "\n";
+  });
+  navigator.clipboard.writeText(text);
+  alert("已复制，直接粘贴到 Excel ✅");
 }
 </script>
 </body>
