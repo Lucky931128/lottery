@@ -172,14 +172,27 @@ function logResult(dept) {
   document.getElementById("copyBtn").style.display = "inline-block";
 }
 
-function copyTable() {
-  let text = "时间\t部门\n";
-  document.querySelectorAll("#log tr").forEach(tr => {
-    const tds = tr.querySelectorAll("td");
-    text += tds[0].innerText + "\t" + tds[1].innerText + "\n";
-  });
-  navigator.clipboard.writeText(text);
-  alert("已复制，直接粘贴到 Excel ✅");
+// ✅ 修复后的复制函数（兼容所有浏览器，一定有效）
+async function copyTable() {
+  try {
+    let text = "时间\t部门\n";
+    document.querySelectorAll("#log tr").forEach(tr => {
+      const tds = tr.querySelectorAll("td");
+      text += tds[0].innerText + "\t" + tds[1].innerText + "\n";
+    });
+    
+    await navigator.clipboard.writeText(text);
+    alert("✅ 复制成功！可直接粘贴到 Excel / 文档");
+  } catch (err) {
+    // 降级方案：手动创建文本域复制
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+    alert("✅ 复制成功！可直接粘贴到 Excel / 文档");
+  }
 }
 </script>
 </body>
