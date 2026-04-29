@@ -9,6 +9,7 @@ body {
   background: linear-gradient(135deg, #1e3c72, #2a5298);
   color:#fff;
   text-align:center;
+  position: relative;
 }
 h1{
   font-size:80px;
@@ -20,6 +21,27 @@ h1{
     0 0 12px #00eaff,
     0 0 24px #0072ff,
     0 0 48px rgba(0,114,255,0.6);
+}
+
+/* ✅ 复制成功浮动提示 */
+.toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 255, 204, 0.9);
+  color: #000;
+  padding: 16px 32px;
+  border-radius: 12px;
+  font-size: 20px;
+  font-weight: bold;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s ease;
+  z-index: 9999;
+}
+.toast.show {
+  opacity: 1;
 }
 
 /* ✅ textarea 已隐藏滚动条 */
@@ -88,6 +110,9 @@ th, td {
 </head>
 
 <body>
+<!-- 浮动提示框 -->
+<div class="toast" id="toast">✅ 复制成功！可直接粘贴到 Excel</div>
+
 <h1>🎤2G-AI大讲堂-抽签系统</h1>
 
 <textarea id="pool">NP_ID部
@@ -129,6 +154,13 @@ let departments = [];
 let rolling = false;
 let timer = null;
 let picked = [];
+
+// 显示提示
+function showToast() {
+  const t = document.getElementById("toast");
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 1500);
+}
 
 function startOrStop() {
   const btn = document.getElementById("actionBtn");
@@ -172,27 +204,27 @@ function logResult(dept) {
   document.getElementById("copyBtn").style.display = "inline-block";
 }
 
-// ✅ 修复后的复制函数（兼容所有浏览器，一定有效）
+// 无弹窗版复制
 async function copyTable() {
+  let text = "时间\t部门\n";
+  document.querySelectorAll("#log tr").forEach(tr => {
+    const tds = tr.querySelectorAll("td");
+    text += tds[0].innerText + "\t" + tds[1].innerText + "\n";
+  });
+
   try {
-    let text = "时间\t部门\n";
-    document.querySelectorAll("#log tr").forEach(tr => {
-      const tds = tr.querySelectorAll("td");
-      text += tds[0].innerText + "\t" + tds[1].innerText + "\n";
-    });
-    
     await navigator.clipboard.writeText(text);
-    alert("✅ 复制成功！可直接粘贴到 Excel / 文档");
   } catch (err) {
-    // 降级方案：手动创建文本域复制
     const textArea = document.createElement("textarea");
     textArea.value = text;
     document.body.appendChild(textArea);
     textArea.select();
     document.execCommand('copy');
     document.body.removeChild(textArea);
-    alert("✅ 复制成功！可直接粘贴到 Excel / 文档");
   }
+  
+  // 只弹出页面内提醒，不弹窗
+  showToast();
 }
 </script>
 </body>
