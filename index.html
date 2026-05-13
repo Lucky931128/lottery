@@ -23,7 +23,7 @@ h1{
     0 0 48px rgba(0,114,255,0.6);
 }
 
-/* 复制成功浮动提示 */
+/* ✅ 复制成功浮动提示 */
 .toast {
   position: fixed;
   top: 50%;
@@ -44,7 +44,7 @@ h1{
   opacity: 1;
 }
 
-/* textarea 已隐藏滚动条 */
+/* ✅ textarea 已隐藏滚动条 */
 textarea{
   width:40ch;
   min-width:360px;
@@ -62,11 +62,11 @@ textarea{
   color:#fff;
   border:1px solid rgba(255,255,255,0.25);
   border-radius:16px;
-  scrollbar-width: none;        /* Firefox */
-  -ms-overflow-style: none;     /* IE / Edge */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 textarea::-webkit-scrollbar{
-  display: none;                /* Chrome / Safari */
+  display: none;
 }
 
 button {
@@ -88,12 +88,13 @@ button.stop {
   background: linear-gradient(135deg, #ff512f, #dd2476);
 }
 
-/* 红色小重置按钮样式 */
+/* 红色小重置按钮 */
 #resetBtn {
   font-size: 16px;
-  padding: 8px 20px;
-  background: linear-gradient(135deg, #ff416c, #ff4b2b);
-  margin: 0 0 20px 0;
+  padding: 6px 18px;
+  margin: 0 auto 20px;
+  display: inline-block;
+  background: #e53935;
 }
 
 .result {
@@ -114,7 +115,6 @@ th, td {
 </head>
 
 <body>
-<!-- 浮动提示框 -->
 <div class="toast" id="toast">✅ 复制成功！可直接粘贴到 Excel</div>
 
 <h1>🎤2G-AI大讲堂-抽签系统</h1>
@@ -134,7 +134,6 @@ NP_质量部
 NP_智能穿戴采购部
 NP_智能穿戴质量部</textarea>
 
-<!-- 重置按钮 -->
 <button id="resetBtn" onclick="resetPool()">🔄 重置</button>
 
 <div>
@@ -157,12 +156,47 @@ NP_智能穿戴质量部</textarea>
 <button id="copyBtn" style="display:none" onclick="copyTable()">📋 复制抽签记录</button>
 
 <script>
-// 保存初始部门数据，用于重置
-const originalPool = document.getElementById("pool").value;
+// 原始固定部门列表
+const originalPoolText = `NP_ID部
+NP_大终端采购部
+NP_结构部
+NP_软件测试部
+NP_手机软件开发部
+NP_智能产品软件开发部
+NP_生活家电质量部
+NP_生态链采购部
+NP_项目管理部
+NP_新业务产品管理部
+NP_硬件部
+NP_质量部
+NP_智能穿戴采购部
+NP_智能穿戴质量部`;
+
 let departments = [];
 let rolling = false;
 let timer = null;
 let picked = [];
+
+// 页面加载读取本地存储
+window.onload = function(){
+  // 恢复已抽部门
+  if(localStorage.getItem('picked')){
+    picked = JSON.parse(localStorage.getItem('picked'));
+  }
+  // 恢复抽签记录
+  if(localStorage.getItem('logHtml')){
+    document.getElementById('log').innerHTML = localStorage.getItem('logHtml');
+    document.getElementById('copyBtn').style.display = "inline-block";
+  }
+  // 刷新文本框剩余部门
+  updatePool();
+}
+
+// 保存到本地存储
+function saveLocal(){
+  localStorage.setItem('picked', JSON.stringify(picked));
+  localStorage.setItem('logHtml', document.getElementById('log').innerHTML);
+}
 
 // 显示提示
 function showToast() {
@@ -171,35 +205,39 @@ function showToast() {
   setTimeout(() => t.classList.remove("show"), 1500);
 }
 
-// 重置抽签池和记录
+// 完全重置（只点重置按钮才触发）
 function resetPool() {
   clearInterval(timer);
   rolling = false;
   picked = [];
-  document.getElementById("pool").value = originalPool;
+  // 恢复原始文本
+  document.getElementById("pool").value = originalPoolText;
   document.getElementById("display").innerText = "等待抽签";
   document.getElementById("log").innerHTML = "";
   document.getElementById("actionBtn").innerText = "开始";
   document.getElementById("actionBtn").classList.remove("stop");
   document.getElementById("copyBtn").style.display = "none";
+  // 清空本地存储
+  localStorage.removeItem('picked');
+  localStorage.removeItem('logHtml');
 }
 
-// 自动更新抽签池文本框
+// 更新文本框剩余部门
 function updatePool() {
   const pool = document.getElementById("pool");
-  // 过滤掉已抽中的部门
-  const remaining = originalPool.split("\n")
+  const allDept = originalPoolText.split("\n")
     .map(d => d.trim())
-    .filter(d => d && !picked.includes(d));
+    .filter(d => d);
   
+  const remaining = allDept.filter(d => !picked.includes(d));
   pool.value = remaining.join("\n");
-  
-  // 如果抽签池为空，自动重置
+
+  // 抽完自动重置
   if (remaining.length === 0) {
     setTimeout(() => {
       alert("所有部门已抽取完毕，自动重置！");
       resetPool();
-    }, 500);
+    }, 300);
   }
 }
 
@@ -235,7 +273,8 @@ function startOrStop() {
     const result = document.getElementById("display").innerText;
     picked.push(result);
     logResult(result);
-    updatePool(); // 抽中后更新抽签池
+    updatePool();
+    saveLocal(); // 每次抽完保存进度
   }
 }
 
@@ -246,7 +285,7 @@ function logResult(dept) {
   document.getElementById("copyBtn").style.display = "inline-block";
 }
 
-// 无弹窗版复制
+// 复制记录
 async function copyTable() {
   let text = "时间\t部门\n";
   document.querySelectorAll("#log tr").forEach(tr => {
@@ -262,10 +301,8 @@ async function copyTable() {
     document.body.appendChild(textArea);
     textArea.select();
     document.execCommand('copy');
-    document.body.removeChild(textArea);
+    textArea.removeChild(textArea);
   }
-  
-  // 只弹出页面内提醒，不弹窗
   showToast();
 }
 </script>
