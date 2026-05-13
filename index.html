@@ -23,7 +23,7 @@ h1{
     0 0 48px rgba(0,114,255,0.6);
 }
 
-/* ✅ 复制成功浮动提示 */
+/* 复制成功浮动提示 */
 .toast {
   position: fixed;
   top: 50%;
@@ -44,29 +44,24 @@ h1{
   opacity: 1;
 }
 
-/* ✅ textarea 已隐藏滚动条 */
+/* textarea 已隐藏滚动条 */
 textarea{
   width:40ch;
   min-width:360px;
   max-width:70%;
-
   height:120px;
   overflow-y:auto;
   resize:none;
-
   display:block;
   margin:20px auto;
-
   font-size:16px;
   text-align:center;
   line-height:1.8;
-
   background: rgba(255,255,255,0.12);
   backdrop-filter: blur(6px);
   color:#fff;
   border:1px solid rgba(255,255,255,0.25);
   border-radius:16px;
-
   scrollbar-width: none;        /* Firefox */
   -ms-overflow-style: none;     /* IE / Edge */
 }
@@ -92,6 +87,15 @@ button:hover {
 button.stop {
   background: linear-gradient(135deg, #ff512f, #dd2476);
 }
+
+/* 红色小重置按钮样式 */
+#resetBtn {
+  font-size: 16px;
+  padding: 8px 20px;
+  background: linear-gradient(135deg, #ff416c, #ff4b2b);
+  margin: 0 0 20px 0;
+}
+
 .result {
   font-size:48px;
   margin:30px 0;
@@ -130,6 +134,9 @@ NP_质量部
 NP_智能穿戴采购部
 NP_智能穿戴质量部</textarea>
 
+<!-- 重置按钮 -->
+<button id="resetBtn" onclick="resetPool()">🔄 重置</button>
+
 <div>
   <button id="actionBtn" onclick="startOrStop()">开始</button>
 </div>
@@ -150,6 +157,8 @@ NP_智能穿戴质量部</textarea>
 <button id="copyBtn" style="display:none" onclick="copyTable()">📋 复制抽签记录</button>
 
 <script>
+// 保存初始部门数据，用于重置
+const originalPool = document.getElementById("pool").value;
 let departments = [];
 let rolling = false;
 let timer = null;
@@ -160,6 +169,38 @@ function showToast() {
   const t = document.getElementById("toast");
   t.classList.add("show");
   setTimeout(() => t.classList.remove("show"), 1500);
+}
+
+// 重置抽签池和记录
+function resetPool() {
+  clearInterval(timer);
+  rolling = false;
+  picked = [];
+  document.getElementById("pool").value = originalPool;
+  document.getElementById("display").innerText = "等待抽签";
+  document.getElementById("log").innerHTML = "";
+  document.getElementById("actionBtn").innerText = "开始";
+  document.getElementById("actionBtn").classList.remove("stop");
+  document.getElementById("copyBtn").style.display = "none";
+}
+
+// 自动更新抽签池文本框
+function updatePool() {
+  const pool = document.getElementById("pool");
+  // 过滤掉已抽中的部门
+  const remaining = originalPool.split("\n")
+    .map(d => d.trim())
+    .filter(d => d && !picked.includes(d));
+  
+  pool.value = remaining.join("\n");
+  
+  // 如果抽签池为空，自动重置
+  if (remaining.length === 0) {
+    setTimeout(() => {
+      alert("所有部门已抽取完毕，自动重置！");
+      resetPool();
+    }, 500);
+  }
 }
 
 function startOrStop() {
@@ -194,6 +235,7 @@ function startOrStop() {
     const result = document.getElementById("display").innerText;
     picked.push(result);
     logResult(result);
+    updatePool(); // 抽中后更新抽签池
   }
 }
 
