@@ -174,6 +174,9 @@ NP_质量部
 NP_智能穿戴采购部
 NP_智能穿戴质量部`;
 
+// 清空记录密码
+const CLEAR_PASSWORD = "woai2g";
+
 let departments = [];
 let rolling = false;
 let timer = null;
@@ -205,9 +208,7 @@ function showToast() {
 // 重置部门池：只恢复部门，保留抽签记录
 function confirmReset(){
   if(!confirm("确定要重置部门池吗？")) return;
-  // 清空已抽取标记，但保留记录
   picked = [];
-  // 恢复文本框全部部门
   document.getElementById("pool").value = originalPoolText;
   document.getElementById("display").innerText = "等待抽签";
   clearInterval(timer);
@@ -217,20 +218,30 @@ function confirmReset(){
   saveLocal();
 }
 
-// 清空记录：清空表格 + 重置抽签状态，部门池不变
+// 清空记录：密码验证
 function confirmClearLog(){
-  if(!confirm("确定要清空所有抽签记录吗？")) return;
-  // 清空记录表格
+  const inputPwd = prompt("请输入清空密码：");
+  
+  // 取消输入
+  if(inputPwd === null) return;
+  
+  // 密码错误
+  if(inputPwd !== CLEAR_PASSWORD){
+    alert("密码错误，无法清空记录！");
+    return;
+  }
+  
+  // 密码正确 → 执行清空
   document.getElementById("log").innerHTML = "";
   document.getElementById("copyBtn").style.display = "none";
   document.getElementById("clearLogBtn").style.display = "none";
-  // 重置抽签显示和状态
   document.getElementById("display").innerText = "等待抽签";
   clearInterval(timer);
   rolling = false;
   document.getElementById("actionBtn").innerText = "开始";
   document.getElementById("actionBtn").classList.remove("stop");
   saveLocal();
+  alert("✅ 密码正确，抽签记录已清空！");
 }
 
 // 更新剩余部门
