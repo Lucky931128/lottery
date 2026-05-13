@@ -204,7 +204,7 @@ function showToast() {
 
 // 重置部门池：只恢复部门，保留抽签记录
 function confirmReset(){
-  if(!confirm("确定要重置部门池吗？抽签记录将保留不变！")) return;
+  if(!confirm("确定要重置部门池吗？")) return;
   // 清空已抽取标记，但保留记录
   picked = [];
   // 恢复文本框全部部门
