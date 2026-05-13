@@ -72,7 +72,7 @@ textarea::-webkit-scrollbar{
 button {
   font-size:24px;
   padding:14px 48px;
-  margin:20px;
+  margin:8px auto;
   border:none;
   border-radius:40px;
   cursor:pointer;
@@ -88,13 +88,19 @@ button.stop {
   background: linear-gradient(135deg, #ff512f, #dd2476);
 }
 
-/* 红色小重置按钮 */
+/* 红色小重置按钮 小号 */
 #resetBtn {
   font-size: 16px;
-  padding: 6px 18px;
-  margin: 0 auto 20px;
-  display: inline-block;
+  padding: 6px 24px;
   background: #e53935;
+  margin-top: 10px;
+}
+/* 清空记录按钮 */
+#clearLogBtn {
+  font-size: 18px;
+  padding: 10px 30px;
+  background: #f44336;
+  margin-left:15px;
 }
 
 .result {
@@ -134,10 +140,10 @@ NP_质量部
 NP_智能穿戴采购部
 NP_智能穿戴质量部</textarea>
 
-<button id="resetBtn" onclick="resetPool()">🔄 重置</button>
-
 <div>
   <button id="actionBtn" onclick="startOrStop()">开始</button>
+  <br>
+  <button id="resetBtn" onclick="confirmReset()">🔄 重置</button>
 </div>
 
 <div class="result" id="display">等待抽签</div>
@@ -154,6 +160,7 @@ NP_智能穿戴质量部</textarea>
 </table>
 
 <button id="copyBtn" style="display:none" onclick="copyTable()">📋 复制抽签记录</button>
+<button id="clearLogBtn" style="display:none" onclick="confirmClearLog()">🗑️ 清空记录</button>
 
 <script>
 // 原始固定部门列表
@@ -179,16 +186,14 @@ let picked = [];
 
 // 页面加载读取本地存储
 window.onload = function(){
-  // 恢复已抽部门
   if(localStorage.getItem('picked')){
     picked = JSON.parse(localStorage.getItem('picked'));
   }
-  // 恢复抽签记录
   if(localStorage.getItem('logHtml')){
     document.getElementById('log').innerHTML = localStorage.getItem('logHtml');
     document.getElementById('copyBtn').style.display = "inline-block";
+    document.getElementById('clearLogBtn').style.display = "inline-block";
   }
-  // 刷新文本框剩余部门
   updatePool();
 }
 
@@ -205,18 +210,42 @@ function showToast() {
   setTimeout(() => t.classList.remove("show"), 1500);
 }
 
-// 完全重置（只点重置按钮才触发）
+// 重置二次确认
+function confirmReset(){
+  if(!confirm("确定要重置抽签所有记录和部门池吗？")){
+    return;
+  }
+  resetPool();
+}
+
+// 清空记录二次确认
+function confirmClearLog(){
+  if(!confirm("确定要清空所有抽签记录吗？")){
+    return;
+  }
+  clearLogOnly();
+}
+
+// 只清空抽签记录，保留已抽部门
+function clearLogOnly(){
+  document.getElementById("log").innerHTML = "";
+  document.getElementById("copyBtn").style.display = "none";
+  document.getElementById("clearLogBtn").style.display = "none";
+  saveLocal();
+}
+
+// 完全重置
 function resetPool() {
   clearInterval(timer);
   rolling = false;
   picked = [];
-  // 恢复原始文本
   document.getElementById("pool").value = originalPoolText;
   document.getElementById("display").innerText = "等待抽签";
   document.getElementById("log").innerHTML = "";
   document.getElementById("actionBtn").innerText = "开始";
   document.getElementById("actionBtn").classList.remove("stop");
   document.getElementById("copyBtn").style.display = "none";
+  document.getElementById("clearLogBtn").style.display = "none";
   // 清空本地存储
   localStorage.removeItem('picked');
   localStorage.removeItem('logHtml');
@@ -274,15 +303,19 @@ function startOrStop() {
     picked.push(result);
     logResult(result);
     updatePool();
-    saveLocal(); // 每次抽完保存进度
+    saveLocal();
   }
 }
 
+// 新增记录插到表格最上方，最新在最前
 function logResult(dept) {
   const time = new Date().toLocaleString();
-  document.getElementById("log").innerHTML +=
-    `<tr><td>${time}</td><td>${dept}</td></tr>`;
+  const newRow = `<tr><td>${time}</td><td>${dept}</td></tr>`;
+  // 插入到 tbody 最前面
+  document.getElementById("log").innerHTML = newRow + document.getElementById("log").innerHTML;
+  
   document.getElementById("copyBtn").style.display = "inline-block";
+  document.getElementById("clearLogBtn").style.display = "inline-block";
 }
 
 // 复制记录
