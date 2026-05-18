@@ -113,6 +113,50 @@ th, td {
   border:1px solid #666;
   padding:10px;
 }
+
+/* 自定义密码弹窗 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-box {
+  background: #fff;
+  color: #000;
+  padding: 20px 30px;
+  border-radius: 12px;
+  text-align: center;
+}
+.modal-box h3 {
+  margin:0 0 15px;
+}
+.modal-box input[type="password"] {
+  width: 80%;
+  padding: 8px;
+  font-size: 18px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+}
+.modal-box button {
+  font-size: 16px;
+  padding: 8px 20px;
+  margin: 0 5px;
+  border-radius: 8px;
+}
+.modal-confirm {
+  background: #2196F3;
+}
+.modal-cancel {
+  background: #f44336;
+}
 </style>
 </head>
 
@@ -145,8 +189,19 @@ th, td {
 <button id="copyBtn" style="display:none" onclick="copyTable()">📋 复制抽签记录</button>
 <button id="clearLogBtn" style="display:none" onclick="confirmClearLog()">🗑️ 清空记录</button>
 
+<!-- 密码弹窗容器 -->
+<div id="pwdModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <h3>请输入清空密码</h3>
+    <input type="password" id="pwdInput" placeholder="输入密码" autocomplete="off">
+    <br>
+    <button class="modal-confirm" onclick="submitPwd()">确定</button>
+    <button class="modal-cancel" onclick="cancelPwd()">取消</button>
+  </div>
+</div>
+
 <script>
-// 唯一数据源：原始部门列表（所有地方都用这个）
+// 唯一数据源：原始部门列表
 const originalPoolText = `NP_ID部
 NP_大终端采购部
 NP_结构部
@@ -170,36 +225,31 @@ let rolling = false;
 let timer = null;
 let picked = [];
 
-// 页面加载：统一从本地存储读取，保证数据一致
+// 页面加载
 window.onload = function(){
-  // 读取已抽中的部门
   if(localStorage.getItem('picked')){
     picked = JSON.parse(localStorage.getItem('picked'));
   }
-  // 读取抽签记录
   if(localStorage.getItem('logHtml')){
     document.getElementById('log').innerHTML = localStorage.getItem('logHtml');
     document.getElementById('copyBtn').style.display = "inline-block";
     document.getElementById('clearLogBtn').style.display = "inline-block";
   }
-  // 统一更新剩余部门
   updatePool();
 }
 
-// 统一保存数据到本地存储
 function saveLocal(){
   localStorage.setItem('picked', JSON.stringify(picked));
   localStorage.setItem('logHtml', document.getElementById('log').innerHTML);
 }
 
-// 复制成功提示
 function showToast() {
   const t = document.getElementById("toast");
   t.classList.add("show");
   setTimeout(() => t.classList.remove("show"), 1500);
 }
 
-// 重置部门池：只恢复部门，保留抽签记录
+// 重置部门池
 function confirmReset(){
   if(!confirm("确定要重置部门池吗？")) return;
   picked = [];
@@ -212,21 +262,30 @@ function confirmReset(){
   updatePool();
 }
 
-// 隐藏式密码输入弹窗（核心修改）
+let resolvePwd = null;
+
+// 弹出自定义密码框
 function confirmClearLog(){
-  // 创建自定义密码弹窗（隐藏输入）
-  const inputPwd = promptPassword("请输入清空密码：");
-  
-  // 取消输入
-  if(inputPwd === null) return;
-  
-  // 密码错误
+  return new Promise((resolve) => {
+    resolvePwd = resolve;
+    document.getElementById('pwdInput').value = '';
+    document.getElementById('pwdModal').style.display = 'flex';
+    setTimeout(()=>document.getElementById('pwdInput').focus(), 10);
+  });
+}
+
+// 确定
+function submitPwd(){
+  const inputPwd = document.getElementById('pwdInput').value;
+  document.getElementById('pwdModal').style.display = 'none';
+
   if(inputPwd !== CLEAR_PASSWORD){
     alert("密码错误，无法清空记录！");
+    resolvePwd(false);
     return;
   }
-  
-  // 密码正确 → 执行清空
+
+  // 密码正确
   document.getElementById("log").innerHTML = "";
   document.getElementById("copyBtn").style.display = "none";
   document.getElementById("clearLogBtn").style.display = "none";
@@ -237,24 +296,29 @@ function confirmClearLog(){
   document.getElementById("actionBtn").classList.remove("stop");
   saveLocal();
   alert("✅ 密码正确，抽签记录已清空！");
+  resolvePwd(true);
 }
 
-// 自定义隐藏密码输入函数
-function promptPassword(msg) {
-  const password = prompt(msg);
-  // prompt本身不支持密码框，这里做兼容处理，同时保证安全
-  return password;
+// 取消
+function cancelPwd(){
+  document.getElementById('pwdModal').style.display = 'none';
+  resolvePwd(false);
 }
 
-// 统一更新剩余部门（唯一数据源，保证一致性）
+// 按回车确认
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Enter' && document.getElementById('pwdModal').style.display !== 'none'){
+    submitPwd();
+  }
+});
+
+// 更新剩余部门
 function updatePool() {
   const pool = document.getElementById("pool");
-  // 从唯一原始数据解析
   const allDept = originalPoolText.split("\n")
     .map(d => d.trim())
     .filter(d => d);
   
-  // 过滤已抽取的部门
   const remaining = allDept.filter(d => !picked.includes(d));
   pool.value = remaining.join("\n");
 
@@ -270,7 +334,6 @@ function startOrStop() {
   const btn = document.getElementById("actionBtn");
 
   if (!rolling) {
-    // 从当前池获取可抽部门
     departments = document.getElementById("pool").value
       .split("\n")
       .map(d => d.trim())
@@ -304,7 +367,7 @@ function startOrStop() {
   }
 }
 
-// 记录抽签结果（最新在顶部）
+// 记录抽签结果
 function logResult(dept) {
   const time = new Date().toLocaleString();
   const newRow = `<tr><td>${time}</td><td>${dept}</td></tr>`;
@@ -314,7 +377,7 @@ function logResult(dept) {
   document.getElementById("clearLogBtn").style.display = "inline-block";
 }
 
-// 复制表格到剪贴板
+// 复制表格
 async function copyTable() {
   let text = "时间\t部门\n";
   document.querySelectorAll("#log tr").forEach(tr => {
