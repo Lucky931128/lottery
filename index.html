@@ -114,7 +114,6 @@ th, td {
   padding:10px;
 }
 
-/* 自定义密码弹窗 */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -189,7 +188,6 @@ th, td {
 <button id="copyBtn" style="display:none" onclick="copyTable()">📋 复制抽签记录</button>
 <button id="clearLogBtn" style="display:none" onclick="confirmClearLog()">🗑️ 清空记录</button>
 
-<!-- 密码弹窗容器 -->
 <div id="pwdModal" class="modal-overlay" style="display:none;">
   <div class="modal-box">
     <h3>请输入清空密码</h3>
@@ -201,7 +199,11 @@ th, td {
 </div>
 
 <script>
-// 唯一数据源：原始部门列表
+// ==============================================
+// 🔥 全局云端同步唯一ID（所有人共用这一套数据）
+const SYNC_KEY = "2g_lecture_draw_2025";
+// ==============================================
+
 const originalPoolText = `NP_ID部
 NP_大终端采购部
 NP_结构部
@@ -217,31 +219,51 @@ NP_质量部
 NP_智能穿戴采购部
 NP_智能穿戴质量部`;
 
-// 清空记录密码
 const CLEAR_PASSWORD = "woai2g";
 
 let departments = [];
 let rolling = false;
 let timer = null;
 let picked = [];
+let resolvePwd = null;
 
-// 页面加载
-window.onload = function(){
-  if(localStorage.getItem('picked')){
-    picked = JSON.parse(localStorage.getItem('picked'));
+// 自动云端同步
+async function loadData() {
+  try {
+    let res = await fetch(`https://api.npoint.io/${SYNC_KEY}`);
+    let data = await res.json();
+    picked = data.picked || [];
+    document.getElementById("log").innerHTML = data.logHtml || "";
+    updateBtnShow();
+    updatePool();
+  } catch (e) {
+    console.log("首次加载");
   }
-  if(localStorage.getItem('logHtml')){
-    document.getElementById('log').innerHTML = localStorage.getItem('logHtml');
-    document.getElementById('copyBtn').style.display = "inline-block";
-    document.getElementById('clearLogBtn').style.display = "inline-block";
-  }
-  updatePool();
 }
 
-function saveLocal(){
-  localStorage.setItem('picked', JSON.stringify(picked));
-  localStorage.setItem('logHtml', document.getElementById('log').innerHTML);
+async function saveData() {
+  try {
+    await fetch(`https://api.npoint.io/${SYNC_KEY}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        picked: picked,
+        logHtml: document.getElementById("log").innerHTML
+      })
+    });
+  } catch (e) {}
 }
+
+function updateBtnShow() {
+  let hasLog = document.getElementById("log").innerHTML.trim() !== "";
+  document.getElementById("copyBtn").style.display = hasLog ? "inline-block" : "none";
+  document.getElementById("clearLogBtn").style.display = hasLog ? "inline-block" : "none";
+}
+
+window.onload = function () {
+  loadData();
+  setInterval(loadData, 2000); // 每2秒自动同步
+};
 
 function showToast() {
   const t = document.getElementById("toast");
@@ -249,152 +271,102 @@ function showToast() {
   setTimeout(() => t.classList.remove("show"), 1500);
 }
 
-// 重置部门池
-function confirmReset(){
-  if(!confirm("确定要重置部门池吗？")) return;
+async function confirmReset() {
+  if (!confirm("确定要重置全局部门池吗？")) return;
   picked = [];
   document.getElementById("display").innerText = "等待抽签";
   clearInterval(timer);
   rolling = false;
   document.getElementById("actionBtn").innerText = "开始";
   document.getElementById("actionBtn").classList.remove("stop");
-  saveLocal();
+  await saveData();
   updatePool();
 }
 
-let resolvePwd = null;
-
-// 弹出自定义密码框
-function confirmClearLog(){
+function confirmClearLog() {
   return new Promise((resolve) => {
     resolvePwd = resolve;
     document.getElementById('pwdInput').value = '';
     document.getElementById('pwdModal').style.display = 'flex';
-    setTimeout(()=>document.getElementById('pwdInput').focus(), 10);
   });
 }
 
-// 确定
-function submitPwd(){
-  const inputPwd = document.getElementById('pwdInput').value;
-  document.getElementById('pwdModal').style.display = 'none';
-
-  if(inputPwd !== CLEAR_PASSWORD){
-    alert("密码错误，无法清空记录！");
+async function submitPwd() {
+  let pwd = document.getElementById("pwdInput").value;
+  document.getElementById("pwdModal").style.display = "none";
+  if (pwd !== CLEAR_PASSWORD) {
+    alert("密码错误！");
     resolvePwd(false);
     return;
   }
-
-  // 密码正确
   document.getElementById("log").innerHTML = "";
-  document.getElementById("copyBtn").style.display = "none";
-  document.getElementById("clearLogBtn").style.display = "none";
-  document.getElementById("display").innerText = "等待抽签";
-  clearInterval(timer);
-  rolling = false;
-  document.getElementById("actionBtn").innerText = "开始";
-  document.getElementById("actionBtn").classList.remove("stop");
-  saveLocal();
-  alert("✅ 密码正确，抽签记录已清空！");
+  picked = [];
+  await saveData();
+  updateBtnShow();
+  alert("✅ 全局记录已清空");
   resolvePwd(true);
 }
 
-// 取消
-function cancelPwd(){
-  document.getElementById('pwdModal').style.display = 'none';
+function cancelPwd() {
+  document.getElementById("pwdModal").style.display = "none";
   resolvePwd(false);
 }
 
-// 按回车确认
-document.addEventListener('keydown', function(e){
-  if(e.key === 'Enter' && document.getElementById('pwdModal').style.display !== 'none'){
-    submitPwd();
-  }
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById("pwdModal").style.display !== 'none') submitPwd();
 });
 
-// 更新剩余部门
 function updatePool() {
-  const pool = document.getElementById("pool");
-  const allDept = originalPoolText.split("\n")
-    .map(d => d.trim())
-    .filter(d => d);
-  
-  const remaining = allDept.filter(d => !picked.includes(d));
-  pool.value = remaining.join("\n");
-
-  if (remaining.length === 0) {
-    setTimeout(() => {
-      alert("所有部门已抽取完毕，请点击【重置部门池】！");
-    }, 300);
+  let all = originalPoolText.split("\n").map(i => i.trim()).filter(i => i);
+  let left = all.filter(d => !picked.includes(d));
+  document.getElementById("pool").value = left.join("\n");
+  if (left.length === 0) {
+    setTimeout(() => alert("已全部抽完！"), 500);
   }
 }
 
-// 开始/停止抽签
 function startOrStop() {
   const btn = document.getElementById("actionBtn");
-
   if (!rolling) {
-    departments = document.getElementById("pool").value
-      .split("\n")
-      .map(d => d.trim())
-      .filter(d => d && !picked.includes(d));
-
-    if (departments.length < 1) {
-      alert("没有可抽取的部门了！请先重置部门池");
+    let list = document.getElementById("pool").value.split("\n").map(i => i.trim()).filter(i => i);
+    if (list.length < 1) {
+      alert("无可用部门");
       return;
     }
-
     rolling = true;
     btn.innerText = "停止";
     btn.classList.add("stop");
-
     timer = setInterval(() => {
-      const rand = departments[Math.floor(Math.random() * departments.length)];
-      document.getElementById("display").innerText = rand;
+      let r = list[Math.floor(Math.random() * list.length)];
+      document.getElementById("display").innerText = r;
     }, 100);
-
   } else {
     clearInterval(timer);
     rolling = false;
     btn.innerText = "开始";
     btn.classList.remove("stop");
-
-    const result = document.getElementById("display").innerText;
-    picked.push(result);
-    logResult(result);
-    updatePool();
-    saveLocal();
+    let res = document.getElementById("display").innerText;
+    picked.push(res);
+    logResult(res);
+    saveData();
   }
 }
 
-// 记录抽签结果
 function logResult(dept) {
-  const time = new Date().toLocaleString();
-  const newRow = `<tr><td>${time}</td><td>${dept}</td></tr>`;
-  document.getElementById("log").innerHTML = newRow + document.getElementById("log").innerHTML;
-  
-  document.getElementById("copyBtn").style.display = "inline-block";
-  document.getElementById("clearLogBtn").style.display = "inline-block";
+  let time = new Date().toLocaleString();
+  let row = `<tr><td>${time}</td><td>${dept}</td></tr>`;
+  document.getElementById("log").innerHTML = row + document.getElementById("log").innerHTML;
+  updateBtnShow();
 }
 
-// 复制表格
 async function copyTable() {
-  let text = "时间\t部门\n";
+  let t = "时间\t部门\n";
   document.querySelectorAll("#log tr").forEach(tr => {
-    const tds = tr.querySelectorAll("td");
-    text += tds[0].innerText + "\t" + tds[1].innerText + "\n";
+    let arr = [];
+    tr.querySelectorAll("td").forEach(td => arr.push(td.innerText));
+    t += arr.join("\t") + "\n";
   });
-
-  try {
-    await navigator.clipboard.writeText(text);
-  } catch (err) {
-    const textArea = document.createElement("textarea");
-    textArea.value = text;
-    document.body.appendChild(textArea);
-    textArea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textArea);
-  }
+  await navigator.clipboard.writeText(t);
   showToast();
 }
 </script>
