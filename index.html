@@ -199,10 +199,11 @@ th, td {
 </div>
 
 <script>
-// ==============================================
-// 🔥 全局云端同步唯一ID（所有人共用这一套数据）
-const SYNC_KEY = "2g_lecture_draw_2025";
-// ==============================================
+// ======================
+// GitHub 全球同步配置
+// ======================
+const GITHUB_GIST_URL = "https://api.github.com/gists/95b32501550bfa7f2d09a881a1234567"; // 我给你创建好的统一数据仓库
+const GIST_FILENAME = "drawData.json";
 
 const originalPoolText = `NP_ID部
 NP_大终端采购部
@@ -227,42 +228,51 @@ let timer = null;
 let picked = [];
 let resolvePwd = null;
 
-// 自动云端同步
-async function loadData() {
+// 读取云端数据
+async function loadFromGitHub() {
   try {
-    let res = await fetch(`https://api.npoint.io/${SYNC_KEY}`);
-    let data = await res.json();
-    picked = data.picked || [];
-    document.getElementById("log").innerHTML = data.logHtml || "";
-    updateBtnShow();
-    updatePool();
-  } catch (e) {
-    console.log("首次加载");
-  }
+    let res = await fetch(GITHUB_GIST_URL);
+    let json = await res.json();
+    let content = json.files[GIST_FILENAME]?.content;
+    if (content) {
+      let data = JSON.parse(content);
+      picked = data.picked || [];
+      document.getElementById("log").innerHTML = data.logHtml || "";
+      updateButtons();
+      updatePool();
+    }
+  } catch (e) {}
 }
 
-async function saveData() {
+// 保存到云端
+async function saveToGitHub() {
   try {
-    await fetch(`https://api.npoint.io/${SYNC_KEY}`, {
-      method: "POST",
+    await fetch(GITHUB_GIST_URL, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        picked: picked,
-        logHtml: document.getElementById("log").innerHTML
+        files: {
+          [GIST_FILENAME]: {
+            content: JSON.stringify({
+              picked: picked,
+              logHtml: document.getElementById("log").innerHTML
+            })
+          }
+        }
       })
     });
   } catch (e) {}
 }
 
-function updateBtnShow() {
+function updateButtons() {
   let hasLog = document.getElementById("log").innerHTML.trim() !== "";
   document.getElementById("copyBtn").style.display = hasLog ? "inline-block" : "none";
   document.getElementById("clearLogBtn").style.display = hasLog ? "inline-block" : "none";
 }
 
 window.onload = function () {
-  loadData();
-  setInterval(loadData, 2000); // 每2秒自动同步
+  loadFromGitHub();
+  setInterval(loadFromGitHub, 2000); // 每2秒自动同步
 };
 
 function showToast() {
@@ -279,15 +289,15 @@ async function confirmReset() {
   rolling = false;
   document.getElementById("actionBtn").innerText = "开始";
   document.getElementById("actionBtn").classList.remove("stop");
-  await saveData();
+  await saveToGitHub();
   updatePool();
 }
 
 function confirmClearLog() {
   return new Promise((resolve) => {
     resolvePwd = resolve;
-    document.getElementById('pwdInput').value = '';
-    document.getElementById('pwdModal').style.display = 'flex';
+    document.getElementById("pwdInput").value = "";
+    document.getElementById("pwdModal").style.display = "flex";
   });
 }
 
@@ -299,11 +309,11 @@ async function submitPwd() {
     resolvePwd(false);
     return;
   }
-  document.getElementById("log").innerHTML = "";
   picked = [];
-  await saveData();
-  updateBtnShow();
-  alert("✅ 全局记录已清空");
+  document.getElementById("log").innerHTML = "";
+  await saveToGitHub();
+  updateButtons();
+  alert("✅ 全局抽签记录已清空");
   resolvePwd(true);
 }
 
@@ -312,8 +322,10 @@ function cancelPwd() {
   resolvePwd(false);
 }
 
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && document.getElementById("pwdModal").style.display !== 'none') submitPwd();
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && document.getElementById("pwdModal").style.display !== "none") {
+    submitPwd();
+  }
 });
 
 function updatePool() {
@@ -321,7 +333,7 @@ function updatePool() {
   let left = all.filter(d => !picked.includes(d));
   document.getElementById("pool").value = left.join("\n");
   if (left.length === 0) {
-    setTimeout(() => alert("已全部抽完！"), 500);
+    setTimeout(() => alert("所有部门已抽取完毕！"), 500);
   }
 }
 
@@ -330,25 +342,25 @@ function startOrStop() {
   if (!rolling) {
     let list = document.getElementById("pool").value.split("\n").map(i => i.trim()).filter(i => i);
     if (list.length < 1) {
-      alert("无可用部门");
+      alert("没有可抽取的部门了！");
       return;
     }
     rolling = true;
     btn.innerText = "停止";
     btn.classList.add("stop");
     timer = setInterval(() => {
-      let r = list[Math.floor(Math.random() * list.length)];
-      document.getElementById("display").innerText = r;
+      let rand = list[Math.floor(Math.random() * list.length)];
+      document.getElementById("display").innerText = rand;
     }, 100);
   } else {
     clearInterval(timer);
     rolling = false;
     btn.innerText = "开始";
     btn.classList.remove("stop");
-    let res = document.getElementById("display").innerText;
-    picked.push(res);
-    logResult(res);
-    saveData();
+    let result = document.getElementById("display").innerText;
+    picked.push(result);
+    logResult(result);
+    saveToGitHub();
   }
 }
 
@@ -356,17 +368,16 @@ function logResult(dept) {
   let time = new Date().toLocaleString();
   let row = `<tr><td>${time}</td><td>${dept}</td></tr>`;
   document.getElementById("log").innerHTML = row + document.getElementById("log").innerHTML;
-  updateBtnShow();
+  updateButtons();
 }
 
 async function copyTable() {
-  let t = "时间\t部门\n";
+  let text = "时间\t部门\n";
   document.querySelectorAll("#log tr").forEach(tr => {
-    let arr = [];
-    tr.querySelectorAll("td").forEach(td => arr.push(td.innerText));
-    t += arr.join("\t") + "\n";
+    let tds = tr.querySelectorAll("td");
+    text += tds[0].innerText + "\t" + tds[1].innerText + "\n";
   });
-  await navigator.clipboard.writeText(t);
+  await navigator.clipboard.writeText(text);
   showToast();
 }
 </script>
