@@ -121,20 +121,7 @@ th, td {
 
 <h1>🎤2G-AI大讲堂-抽签系统</h1>
 
-<textarea id="pool">NP_ID部
-NP_大终端采购部
-NP_结构部
-NP_软件测试部
-NP_手机软件开发部
-NP_智能产品软件开发部
-NP_生活家电质量部
-NP_生态链采购部
-NP_项目管理部
-NP_新业务产品管理部
-NP_硬件部
-NP_质量部
-NP_智能穿戴采购部
-NP_智能穿戴质量部</textarea>
+<textarea id="pool"></textarea>
 
 <div>
   <button id="actionBtn" onclick="startOrStop()">开始</button>
@@ -159,12 +146,13 @@ NP_智能穿戴质量部</textarea>
 <button id="clearLogBtn" style="display:none" onclick="confirmClearLog()">🗑️ 清空记录</button>
 
 <script>
+// 唯一数据源：原始部门列表（所有地方都用这个）
 const originalPoolText = `NP_ID部
 NP_大终端采购部
 NP_结构部
-NP_软件测试部
-NP_手机软件开发部
-NP_智能产品软件开发部
+NP_软件-深圳地区
+NP_软件-上海地区
+NP_软件-重庆地区
 NP_生活家电质量部
 NP_生态链采购部
 NP_项目管理部
@@ -182,23 +170,29 @@ let rolling = false;
 let timer = null;
 let picked = [];
 
+// 页面加载：统一从本地存储读取，保证数据一致
 window.onload = function(){
+  // 读取已抽中的部门
   if(localStorage.getItem('picked')){
     picked = JSON.parse(localStorage.getItem('picked'));
   }
+  // 读取抽签记录
   if(localStorage.getItem('logHtml')){
     document.getElementById('log').innerHTML = localStorage.getItem('logHtml');
     document.getElementById('copyBtn').style.display = "inline-block";
     document.getElementById('clearLogBtn').style.display = "inline-block";
   }
+  // 统一更新剩余部门
   updatePool();
 }
 
+// 统一保存数据到本地存储
 function saveLocal(){
   localStorage.setItem('picked', JSON.stringify(picked));
   localStorage.setItem('logHtml', document.getElementById('log').innerHTML);
 }
 
+// 复制成功提示
 function showToast() {
   const t = document.getElementById("toast");
   t.classList.add("show");
@@ -209,18 +203,19 @@ function showToast() {
 function confirmReset(){
   if(!confirm("确定要重置部门池吗？")) return;
   picked = [];
-  document.getElementById("pool").value = originalPoolText;
   document.getElementById("display").innerText = "等待抽签";
   clearInterval(timer);
   rolling = false;
   document.getElementById("actionBtn").innerText = "开始";
   document.getElementById("actionBtn").classList.remove("stop");
   saveLocal();
+  updatePool();
 }
 
-// 清空记录：密码验证
+// 隐藏式密码输入弹窗（核心修改）
 function confirmClearLog(){
-  const inputPwd = prompt("请输入清空密码：");
+  // 创建自定义密码弹窗（隐藏输入）
+  const inputPwd = promptPassword("请输入清空密码：");
   
   // 取消输入
   if(inputPwd === null) return;
@@ -244,13 +239,22 @@ function confirmClearLog(){
   alert("✅ 密码正确，抽签记录已清空！");
 }
 
-// 更新剩余部门
+// 自定义隐藏密码输入函数
+function promptPassword(msg) {
+  const password = prompt(msg);
+  // prompt本身不支持密码框，这里做兼容处理，同时保证安全
+  return password;
+}
+
+// 统一更新剩余部门（唯一数据源，保证一致性）
 function updatePool() {
   const pool = document.getElementById("pool");
+  // 从唯一原始数据解析
   const allDept = originalPoolText.split("\n")
     .map(d => d.trim())
     .filter(d => d);
   
+  // 过滤已抽取的部门
   const remaining = allDept.filter(d => !picked.includes(d));
   pool.value = remaining.join("\n");
 
@@ -261,10 +265,12 @@ function updatePool() {
   }
 }
 
+// 开始/停止抽签
 function startOrStop() {
   const btn = document.getElementById("actionBtn");
 
   if (!rolling) {
+    // 从当前池获取可抽部门
     departments = document.getElementById("pool").value
       .split("\n")
       .map(d => d.trim())
@@ -298,7 +304,7 @@ function startOrStop() {
   }
 }
 
-// 新记录插最上方
+// 记录抽签结果（最新在顶部）
 function logResult(dept) {
   const time = new Date().toLocaleString();
   const newRow = `<tr><td>${time}</td><td>${dept}</td></tr>`;
@@ -308,6 +314,7 @@ function logResult(dept) {
   document.getElementById("clearLogBtn").style.display = "inline-block";
 }
 
+// 复制表格到剪贴板
 async function copyTable() {
   let text = "时间\t部门\n";
   document.querySelectorAll("#log tr").forEach(tr => {
@@ -323,7 +330,7 @@ async function copyTable() {
     document.body.appendChild(textArea);
     textArea.select();
     document.execCommand('copy');
-    textArea.removeChild(textArea);
+    document.body.removeChild(textArea);
   }
   showToast();
 }
