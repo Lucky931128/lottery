@@ -98,7 +98,9 @@ button.stop {
   background: #f44336;
   margin-left:15px;
 }
-
+.oper-btn{
+  font-size:14px;padding:5px 15px;margin:0 5px;
+}
 .result {
   font-size:48px;
   margin:30px 0;
@@ -160,7 +162,7 @@ th, td {
 </head>
 
 <body>
-<div class="toast" id="toast">✅ 复制成功！可直接粘贴到 Excel</div>
+<div class="toast" id="toast">✅ 操作成功</div>
 
 <h1>🎤2G-AI大讲堂-抽签系统</h1>
 
@@ -170,6 +172,10 @@ th, td {
   <button id="actionBtn" onclick="startOrStop()">开始</button>
   <br>
   <button id="resetBtn" onclick="confirmReset()">🔄 重置部门池</button>
+  <div style="margin:10px 0;">
+    <button class="oper-btn" onclick="exportData()">📤导出全部数据</button>
+    <button class="oper-btn" onclick="importData()">📥导入历史数据</button>
+  </div>
 </div>
 
 <div class="result" id="display">等待抽签</div>
@@ -197,14 +203,9 @@ th, td {
     <button class="modal-cancel" onclick="cancelPwd()">取消</button>
   </div>
 </div>
+<input type="file" id="fileInput" style="display:none" accept=".json" onchange="readFile(this)">
 
 <script>
-// ======================
-// GitHub 全球同步配置
-// ======================
-const GITHUB_GIST_URL = "https://api.github.com/gists/95b32501550bfa7f2d09a881a1234567"; // 我给你创建好的统一数据仓库
-const GIST_FILENAME = "drawData.json";
-
 const originalPoolText = `NP_ID部
 NP_大终端采购部
 NP_结构部
@@ -221,6 +222,7 @@ NP_智能穿戴采购部
 NP_智能穿戴质量部`;
 
 const CLEAR_PASSWORD = "woai2g";
+const STORAGE_KEY = "draw_all_data";
 
 let departments = [];
 let rolling = false;
@@ -228,128 +230,132 @@ let timer = null;
 let picked = [];
 let resolvePwd = null;
 
-// 读取云端数据
-async function loadFromGitHub() {
-  try {
-    let res = await fetch(GITHUB_GIST_URL);
-    let json = await res.json();
-    let content = json.files[GIST_FILENAME]?.content;
-    if (content) {
-      let data = JSON.parse(content);
-      picked = data.picked || [];
-      document.getElementById("log").innerHTML = data.logHtml || "";
-      updateButtons();
-      updatePool();
-    }
-  } catch (e) {}
+// 页面加载读取本地数据
+window.onload = function(){
+  let localData = localStorage.getItem(STORAGE_KEY);
+  if(localData){
+    let obj = JSON.parse(localData);
+    picked = obj.picked || [];
+    document.getElementById('log').innerHTML = obj.logHtml || "";
+  }
+  updateBtnState();
+  updatePool();
 }
 
-// 保存到云端
-async function saveToGitHub() {
-  try {
-    await fetch(GITHUB_GIST_URL, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        files: {
-          [GIST_FILENAME]: {
-            content: JSON.stringify({
-              picked: picked,
-              logHtml: document.getElementById("log").innerHTML
-            })
-          }
-        }
-      })
-    });
-  } catch (e) {}
+// 保存完整数据到本地
+function saveLocalAll(){
+  let saveObj = {
+    picked:picked,
+    logHtml:document.getElementById('log').innerHTML
+  };
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(saveObj));
 }
 
-function updateButtons() {
-  let hasLog = document.getElementById("log").innerHTML.trim() !== "";
-  document.getElementById("copyBtn").style.display = hasLog ? "inline-block" : "none";
-  document.getElementById("clearLogBtn").style.display = hasLog ? "inline-block" : "none";
-}
+// 同标签页同步监听
+window.addEventListener('storage',e=>{
+  if(e.key === STORAGE_KEY){
+    let obj = JSON.parse(e.newValue||"{}");
+    picked = obj.picked||[];
+    document.getElementById('log').innerHTML = obj.logHtml||"";
+    updateBtnState();
+    updatePool();
+  }
+});
 
-window.onload = function () {
-  loadFromGitHub();
-  setInterval(loadFromGitHub, 2000); // 每2秒自动同步
-};
-
-function showToast() {
+function showToast(text="✅ 复制成功！可直接粘贴到 Excel") {
   const t = document.getElementById("toast");
+  t.innerText = text;
   t.classList.add("show");
   setTimeout(() => t.classList.remove("show"), 1500);
 }
 
-async function confirmReset() {
-  if (!confirm("确定要重置全局部门池吗？")) return;
+function updateBtnState(){
+  let hasLog = document.getElementById('log').innerHTML.trim()!=='';
+  document.getElementById("copyBtn").style.display = hasLog?"inline-block":"none";
+  document.getElementById("clearLogBtn").style.display = hasLog?"inline-block":"none";
+}
+
+// 重置部门池
+function confirmReset(){
+  if(!confirm("确定要重置部门池吗？已抽中列表清空，记录保留")) return;
   picked = [];
   document.getElementById("display").innerText = "等待抽签";
   clearInterval(timer);
   rolling = false;
   document.getElementById("actionBtn").innerText = "开始";
   document.getElementById("actionBtn").classList.remove("stop");
-  await saveToGitHub();
+  saveLocalAll();
   updatePool();
 }
 
-function confirmClearLog() {
+// 清空记录密码弹窗
+function confirmClearLog(){
   return new Promise((resolve) => {
     resolvePwd = resolve;
-    document.getElementById("pwdInput").value = "";
-    document.getElementById("pwdModal").style.display = "flex";
+    document.getElementById('pwdInput').value = '';
+    document.getElementById('pwdModal').style.display = 'flex';
+    setTimeout(()=>document.getElementById('pwdInput').focus(),10);
   });
 }
 
-async function submitPwd() {
-  let pwd = document.getElementById("pwdInput").value;
-  document.getElementById("pwdModal").style.display = "none";
-  if (pwd !== CLEAR_PASSWORD) {
-    alert("密码错误！");
+async function submitPwd(){
+  const inputPwd = document.getElementById('pwdInput').value;
+  document.getElementById('pwdModal').style.display = 'none';
+  if(inputPwd !== CLEAR_PASSWORD){
+    alert("密码错误，无法清空记录！");
     resolvePwd(false);
     return;
   }
-  picked = [];
   document.getElementById("log").innerHTML = "";
-  await saveToGitHub();
-  updateButtons();
-  alert("✅ 全局抽签记录已清空");
+  picked = [];
+  document.getElementById("display").innerText = "等待抽签";
+  clearInterval(timer);
+  rolling = false;
+  document.getElementById("actionBtn").innerText = "开始";
+  document.getElementById("actionBtn").classList.remove("stop");
+  saveLocalAll();
+  updateBtnState();
+  alert("✅ 密码正确，抽签记录已清空！");
   resolvePwd(true);
 }
 
-function cancelPwd() {
-  document.getElementById("pwdModal").style.display = "none";
+function cancelPwd(){
+  document.getElementById('pwdModal').style.display = 'none';
   resolvePwd(false);
 }
 
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && document.getElementById("pwdModal").style.display !== "none") {
+document.addEventListener('keydown',function(e){
+  if(e.key === 'Enter' && document.getElementById('pwdModal').style.display !== 'none'){
     submitPwd();
   }
 });
 
+// 更新剩余部门
 function updatePool() {
-  let all = originalPoolText.split("\n").map(i => i.trim()).filter(i => i);
-  let left = all.filter(d => !picked.includes(d));
-  document.getElementById("pool").value = left.join("\n");
-  if (left.length === 0) {
-    setTimeout(() => alert("所有部门已抽取完毕！"), 500);
+  const pool = document.getElementById("pool");
+  const allDept = originalPoolText.split("\n").map(d=>d.trim()).filter(d=>d);
+  const remaining = allDept.filter(d => !picked.includes(d));
+  pool.value = remaining.join("\n");
+  if (remaining.length === 0) {
+    setTimeout(() => alert("所有部门已抽取完毕，请点击【重置部门池】！"),300);
   }
 }
 
+// 抽签逻辑
 function startOrStop() {
   const btn = document.getElementById("actionBtn");
   if (!rolling) {
-    let list = document.getElementById("pool").value.split("\n").map(i => i.trim()).filter(i => i);
-    if (list.length < 1) {
-      alert("没有可抽取的部门了！");
+    departments = document.getElementById("pool").value.split("\n")
+      .map(d=>d.trim()).filter(d=>d && !picked.includes(d));
+    if (departments.length < 1) {
+      alert("没有可抽取的部门了！请先重置部门池");
       return;
     }
     rolling = true;
     btn.innerText = "停止";
     btn.classList.add("stop");
     timer = setInterval(() => {
-      let rand = list[Math.floor(Math.random() * list.length)];
+      const rand = departments[Math.floor(Math.random() * departments.length)];
       document.getElementById("display").innerText = rand;
     }, 100);
   } else {
@@ -357,28 +363,70 @@ function startOrStop() {
     rolling = false;
     btn.innerText = "开始";
     btn.classList.remove("stop");
-    let result = document.getElementById("display").innerText;
+    const result = document.getElementById("display").innerText;
     picked.push(result);
     logResult(result);
-    saveToGitHub();
+    saveLocalAll();
   }
 }
 
 function logResult(dept) {
-  let time = new Date().toLocaleString();
-  let row = `<tr><td>${time}</td><td>${dept}</td></tr>`;
-  document.getElementById("log").innerHTML = row + document.getElementById("log").innerHTML;
-  updateButtons();
+  const time = new Date().toLocaleString();
+  const newRow = `<tr><td>${time}</td><td>${dept}</td></tr>`;
+  document.getElementById("log").innerHTML = newRow + document.getElementById("log").innerHTML;
+  updateBtnState();
 }
 
+// 复制表格
 async function copyTable() {
   let text = "时间\t部门\n";
   document.querySelectorAll("#log tr").forEach(tr => {
-    let tds = tr.querySelectorAll("td");
+    const tds = tr.querySelectorAll("td");
     text += tds[0].innerText + "\t" + tds[1].innerText + "\n";
   });
-  await navigator.clipboard.writeText(text);
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (err) {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+  }
   showToast();
+}
+
+// 导出全部数据json
+function exportData(){
+  let data = JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');
+  let blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  let a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = "抽签完整数据.json";
+  a.click();
+  showToast("✅ 数据导出成功");
+}
+
+// 导入数据
+function importData(){
+  document.getElementById('fileInput').click();
+}
+function readFile(el){
+  let file = el.files[0];
+  if(!file)return;
+  let reader = new FileReader();
+  reader.onload=function(e){
+    try{
+      let obj = JSON.parse(e.target.result);
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(obj));
+      location.reload();
+    }catch(err){
+      alert("数据文件格式错误");
+    }
+  }
+  reader.readAsText(file);
+  el.value='';
 }
 </script>
 </body>
