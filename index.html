@@ -99,6 +99,14 @@ button.stop {
   margin-left:15px;
 }
 
+/* 导出导入按钮 */
+#exportBtn, #importBtn {
+  font-size: 16px;
+  padding: 6px 20px;
+  background: #009955;
+  margin: 5px;
+}
+
 .result {
   font-size:48px;
   margin:30px 0;
@@ -171,6 +179,11 @@ th, td {
   <button id="actionBtn" onclick="startOrStop()">开始</button>
   <br>
   <button id="resetBtn" onclick="confirmReset()">🔄 重置部门池</button>
+
+  <!-- 👇 新增：导出 + 导入 按钮（飞书绝对看得见） -->
+  <br>
+  <button id="exportBtn" onclick="exportAllData()">📤 导出全部数据</button>
+  <button id="importBtn" onclick="importHistoryData()">📥 导入历史数据</button>
 </div>
 
 <div class="result" id="display">等待抽签</div>
@@ -199,6 +212,9 @@ th, td {
     <button class="modal-cancel" onclick="cancelPwd()">取消</button>
   </div>
 </div>
+
+<!-- 导入文件隐藏框 -->
+<input type="file" id="fileInput" style="display:none" accept=".json">
 
 <script>
 // 唯一数据源：原始部门列表
@@ -243,11 +259,55 @@ function saveLocal(){
   localStorage.setItem('logHtml', document.getElementById('log').innerHTML);
 }
 
-function showToast() {
+function showToast(text) {
   const t = document.getElementById("toast");
+  t.innerText = text || "✅ 复制成功！可直接粘贴到 Excel";
   t.classList.add("show");
   setTimeout(() => t.classList.remove("show"), 1500);
 }
+
+// ------------------------------
+// 👇 新增：导出全部数据（下载JSON）
+// ------------------------------
+function exportAllData() {
+  const data = {
+    picked: picked,
+    logHtml: document.getElementById('log').innerHTML
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "抽签数据_" + new Date().toLocaleString().replace(/[/,: ]/g, "-") + ".json";
+  a.click();
+  showToast("✅ 数据导出成功！");
+}
+
+// ------------------------------
+// 👇 新增：导入历史数据（上传JSON）
+// ------------------------------
+function importHistoryData() {
+  document.getElementById('fileInput').click();
+}
+document.getElementById('fileInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    try {
+      const data = JSON.parse(evt.target.result);
+      if (data.picked !== undefined) picked = data.picked;
+      if (data.logHtml !== undefined) document.getElementById('log').innerHTML = data.logHtml;
+      saveLocal();
+      updatePool();
+      showToast("✅ 数据导入成功！");
+      location.reload();
+    } catch (err) {
+      alert("导入失败：文件格式错误");
+    }
+  };
+  reader.readAsText(file);
+});
 
 // 重置部门池
 function confirmReset(){
